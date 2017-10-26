@@ -1,0 +1,65 @@
+#!/bin/bash
+
+export PATH=$PATH:/usr/local/bin/
+
+# config
+export SLACK_BOT_TOKENS="xxx"
+
+export SLACK_APP_CLIENT_ID="xxx"
+export SLACK_APP_CLIENT_SECRET="xxx"
+export SLACK_APP_CLIENT_VERIFICATION_TOKEN="xxx"
+
+export SLACK_APP_OAUTH_ACCESS_TOKEN="xxx"
+export SLACK_APP_BOT_USER_OAUTH_ACCESS_TOKEN="xxx"
+
+export HOST="host.xyx"
+export SLACK_WEBHOOK_URLS="https://hooks.slack.com/services/Txxx/xxx/xxx"
+export SLACK_TEAM="xxx"
+export SLACK_CHANNEL="xxx"
+# export SLACK_TEAM_TOKEN="xxx"
+
+export GOOGLE_API_KEY="xxx"
+
+export DEBUG="Yes"
+
+export HTTP_PORT=9999
+export HTTPS_PORT=9998
+export SSL_KEY="/etc/letsencrypt/live/host.xyx/privkey.pem"
+export SSL_CERT="/etc/letsencrypt/live/host.xyx/fullchain.pem"
+
+PUSHEEN_DEMANDS_DIRECTORY=/opt/apps/pusheen-demands-slackbot
+
+LOG_FILE="$PUSHEEN_DEMANDS_DIRECTORY/app.log"
+ERROR_LOG_FILE=$LOG_FILE
+
+# add userdown config
+export USERDOWN_UID=deploy
+export USERDOWN_GID=deploy
+
+CURR_DIR=$(pwd)
+
+[[ -z "$HTTP_PORT" ]] && [[ -z "$(iptables -L | grep ACCEPT | grep tcp | grep 'anywhere\s\{1,\}anywhere' | grep "dpt:$PORT ctstate NEW,ESTABLISHED")" ]] && iptables -A INPUT -p tcp --dport $HTTP_PORT -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+[[ -z "$HTTP_PORT" ]] && [[ -z "$(iptables -L | grep ACCEPT | grep tcp | grep 'anywhere\s\{1,\}anywhere' | grep "spt:$PORT ctstate ESTABLISHED")" ]] && iptables -A OUTPUT -p tcp --sport $HTTP_PORT -m conntrack --ctstate ESTABLISHED -j ACCEPT
+
+[[ -z "$HTTPS_PORT" ]] && [[ -z "$(iptables -L | grep ACCEPT | grep tcp | grep 'anywhere\s\{1,\}anywhere' | grep "dpt:$PORT ctstate NEW,ESTABLISHED")" ]] && iptables -A INPUT -p tcp --dport $HTTPS_PORT -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+[[ -z "$HTTPS_PORT" ]] && [[ -z "$(iptables -L | grep ACCEPT | grep tcp | grep 'anywhere\s\{1,\}anywhere' | grep "spt:$PORT ctstate ESTABLISHED")" ]] && iptables -A OUTPUT -p tcp --sport $HTTPS_PORT -m conntrack --ctstate ESTABLISHED -j ACCEPT
+
+cd $PUSHEEN_DEMANDS_DIRECTORY
+
+CMD="userdown $PUSHEEN_DEMANDS_DIRECTORY/pusheen-demands-slackbot.js"
+
+# kill existing
+PS_INFO=$(ps aux | grep node | grep "$CMD" | grep $USERDOWN_UID)
+if [[ ! -z $PS_INFO ]]
+then
+	echo
+	echo "Killing existing process:"
+	echo $PS_INFO
+	echo
+	PID=$(echo $PS_INFO | tr -s ' ' ' ' | cut -d ' ' -f 2)
+	kill -s QUIT $PID
+fi
+
+$CMD
+
+cd $CURR_DIR
