@@ -27,7 +27,7 @@ export HTTPS_PORT=9998
 export SSL_KEY="/etc/letsencrypt/live/host.xyx/privkey.pem"
 export SSL_CERT="/etc/letsencrypt/live/host.xyx/fullchain.pem"
 
-PUSHEEN_DEMANDS_DIRECTORY=/opt/apps/pusheen-demands-slackbot
+PUSHEEN_DEMANDS_DIRECTORY=/opt/apps/pusheen-the-slackbot
 
 LOG_FILE="$PUSHEEN_DEMANDS_DIRECTORY/app.log"
 ERROR_LOG_FILE=$LOG_FILE
@@ -46,7 +46,7 @@ CURR_DIR=$(pwd)
 
 cd $PUSHEEN_DEMANDS_DIRECTORY
 
-CMD="userdown $PUSHEEN_DEMANDS_DIRECTORY/pusheen-demands-slackbot.js"
+CMD="userdown $PUSHEEN_DEMANDS_DIRECTORY/pusheen-the-slackbot.js"
 
 # kill existing
 PS_INFO=$(ps aux | grep node | grep "$CMD" | grep $USERDOWN_UID)
