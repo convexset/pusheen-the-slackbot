@@ -8,7 +8,7 @@ const bodyparser = require('body-parser');
 // const pug = require('pug');
 
 module.exports = function prepare(appEnv, log) {
-	const { debugLogger } = appEnv;
+	// const { debugLogger } = appEnv;
 	const app = express();
 
 	const allServers = [];
@@ -28,6 +28,7 @@ module.exports = function prepare(appEnv, log) {
 		require('./shutdown.js'),
 		require('./push-in.js'),
 		require('./slash-command-demand.js'),
+		require('./slash-command-noggin.js'),
 	].forEach(prepareRoute => prepareRoute({ router, appEnv, log, allServers }));
 
 	app.disable('x-powered-by');

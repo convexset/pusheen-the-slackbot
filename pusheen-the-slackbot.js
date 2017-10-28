@@ -14,19 +14,21 @@ const log = require('./log.js');
 ////////////////////////////////////////////////////////////////////////////////
 const appEnv = (function() {
 	const env = {
+		timersInterval: {},
+		timersTimeout: {},
 		SLACK_TRIGGERS: ['Demand!', '/demand'],
 	};
 	['SLACK_BOT_TOKENS', 'SLACK_APP_CLIENT_ID', 'SLACK_APP_CLIENT_SECRET', 'SLACK_APP_CLIENT_VERIFICATION_TOKEN', 'HOST', 'SLACK_WEBHOOK_URLS', 'SLACK_TEAM', 'SLACK_CHANNEL', 'GOOGLE_API_KEY', 'DEBUG', 'HTTP_PORT', 'HTTPS_PORT', 'SSL_KEY', 'SSL_CERT', 'SLACK_APP_OAUTH_ACCESS_TOKEN', 'SLACK_APP_BOT_USER_OAUTH_ACCESS_TOKEN']
-		.forEach(n => {
-			env[n] = process.env[n] || null;
-		});
+	.forEach(n => {
+		env[n] = process.env[n] || null;
+	});
 	env.SLACK_BOT_TOKENS = (env.SLACK_BOT_TOKENS || '').split(';').map(x => x.trim()).filter(x => !!x);
 	env.SLACK_WEBHOOK_URLS = (env.SLACK_WEBHOOK_URLS || '').split(';').map(x => x.trim()).filter(x => !!x);
 	return _.extend(env, require('./pusheen-utils.js')(env));
 })();
 
 (function() {
-	const { HTTP_PORT, HTTPS_PORT, SLACK_WEBHOOK_URLS, SLACK_TEAM_TOKEN, GOOGLE_API_KEY, SLACK_BOT_TOKENS, SLACK_APP_CLIENT_VERIFICATION_TOKEN } = appEnv;
+	const { HTTP_PORT, HTTPS_PORT, SLACK_WEBHOOK_URLS, GOOGLE_API_KEY, SLACK_BOT_TOKENS, SLACK_APP_CLIENT_VERIFICATION_TOKEN } = appEnv;
 
 	let haveCriticalFailure = false;
 

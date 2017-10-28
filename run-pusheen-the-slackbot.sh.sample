@@ -20,6 +20,9 @@ export SLACK_CHANNEL="xxx"
 
 export GOOGLE_API_KEY="xxx"
 
+export NOGGIN_ENV="xxx"
+export NOGGIN_ADMIN_TOKENS="xxx"
+
 export DEBUG="Yes"
 
 export HTTP_PORT=9999

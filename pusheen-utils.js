@@ -1,6 +1,7 @@
+const _ = require('underscore');
 const axios = require('axios');
 
-module.exports = function({ SLACK_APP_CLIENT_VERIFICATION_TOKEN, SLACK_BOT_TOKENS, SLACK_TRIGGERS = [], SLACK_WEBHOOK_URLS, DEBUG, GOOGLE_API_KEY } = {}) {
+module.exports = function({ SLACK_APP_CLIENT_VERIFICATION_TOKEN, SLACK_BOT_TOKENS, SLACK_TRIGGERS = [], SLACK_WEBHOOK_URLS, DEBUG, SLACK_TEAM, SLACK_CHANNEL, GOOGLE_API_KEY } = {}) {
 	const LC_TRIGGERS = SLACK_TRIGGERS.map(s => s.toLowerCase());
 	const helloWorldPayload = {
 		msg: 'Send Pusheen a Demand!',
@@ -20,6 +21,14 @@ module.exports = function({ SLACK_APP_CLIENT_VERIFICATION_TOKEN, SLACK_BOT_TOKEN
 			console.error('\n', ...arguments, '\n');
 		}
 	}
+
+	function makeHeadAndTailOf(s, delimiter = ' ') {
+		const split = s.split(delimiter);
+		const head = split.shift();
+		const tail = split.join(delimiter);
+		return { head, tail };
+	}
+	const googleAPIClient = require('./services/google')(GOOGLE_API_KEY);
 
 	return {
 		cleanRequestString: requestString => {
@@ -41,22 +50,68 @@ module.exports = function({ SLACK_APP_CLIENT_VERIFICATION_TOKEN, SLACK_BOT_TOKEN
 		helloWorldPayload: helloWorldPayload,
 		debugLogger,
 		debugErrorLogger,
+		prepareToHandleSlackSlashCommand({ req, res }) {
+			const { team_id: teamId, team_domain: teamDomain, channel_id: channelId, channel_name: channelName, user_id: userId, user_name: userName, command: command, text: text, response_url: responseUrl } = req.body;
+			const { head: subCommand, tail: subCommandDetails } = makeHeadAndTailOf(text);
+			const reqInfo = { subCommand, subCommandDetails, teamId, teamDomain, channelId, channelName, userId, userName, command, text };
+			const tools = { respondNow, respondLater, respondNowInChannel, respondLaterInChannel, respondNowEphemeral, respondLaterEphemeral, DEBUG, SLACK_TEAM, SLACK_CHANNEL, googleAPIClient, debugLogger, debugErrorLogger };
+			const requestId = Math.floor(Math.random() * 9000000 + 1000000);
+			debugLogger(`[${requestId}] Slack Slash Command Received:`, req.body);
+			function respondNow(r) {
+				debugLogger(`[${requestId}] Sending response:`, r);
+				res.json(r);
+			}
+			function respondLater(r) {
+				debugLogger(`[${requestId}] Sending delayed response:`, r);
+				axios.post(responseUrl, r);
+			}
+			function respondNowInChannel(r) {
+				r = _.extend({}, r);
+				r.response_type = 'in_channel';
+				debugLogger(`[${requestId}] Sending response (in channel):`, r);
+				res.json(r);
+			}
+			function respondLaterInChannel(r) {
+				r = _.extend({}, r);
+				r.response_type = 'in_channel';
+				debugLogger(`[${requestId}] Sending delayed response (in channel):`, r);
+				axios.post(responseUrl, r);
+			}
+			function respondNowEphemeral(r) {
+				r = _.extend({}, r);
+				if (r.hasOwnProperty('response_type')) {
+					delete r.response_type;
+				}
+				debugLogger(`[${requestId}] Sending response (ephemeral):`, r);
+				res.json(r);
+			}
+			function respondLaterEphemeral(r) {
+				r = _.extend({}, r);
+				if (r.hasOwnProperty('response_type')) {
+					delete r.response_type;
+				}
+				debugLogger(`[${requestId}] Sending delayed response (ephemeral):`, r);
+				axios.post(responseUrl, r);
+			}
+
+			return {
+				teamId, teamDomain, channelId, channelName, userId, userName, command, text, responseUrl,
+				subCommand, subCommandDetails,
+				respondNow, respondLater, respondNowInChannel, respondLaterInChannel, respondNowEphemeral, respondLaterEphemeral,
+				reqInfo, tools,
+			};
+		},
 		processRequestPromise({ p, res }) {
 			p
 				.then(() => {
 					res.end();
 				})
 				.catch(error => {
-					debugErrorLogger('Error:', error);
+					debugErrorLogger('Error:', error, !!error.stack ? `\n${error.stack}` : '');
 					res.status(500).send();
 				});
 		},
-		makeHeadAndTailOf(s, delimiter = ' ') {
-			const split = s.split(delimiter);
-			const head = split.shift();
-			const tail = split.join(delimiter);
-			return { head, tail };
-		},
-		googleAPIClient: require('./services/google')(GOOGLE_API_KEY),
+		makeHeadAndTailOf,
+		googleAPIClient,
 	};
 };

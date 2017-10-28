@@ -1,8 +1,9 @@
 const _ = require('underscore');
 
 const subCommands = [
-	'place-search',
-	'compliment',
+	'health-check',
+	'list-cards',
+	'get-card',
 ];
 
 module.exports = _.object(subCommands.map(k => [k, require(`./${k}`)]));

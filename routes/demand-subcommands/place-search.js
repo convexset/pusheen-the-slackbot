@@ -1,11 +1,8 @@
-/* eslint-disable no-console */
-/* eslint-disable yoda */
-
-module.exports = function placeSearch({ req, res, respondLater, subCommandDetails }, { debugLogger, googleAPIClient }) {
+module.exports = function placeSearch({ subCommandDetails }, { respondNowEphemeral, respondLater, debugLogger, debugErrorLogger, googleAPIClient }) {
 	return new Promise(resolve => {
 		const latLng = parseLatLngPair(subCommandDetails);
 		if (!!latLng) {
-			res.json({
+			respondNowEphemeral({
 				text: `Searching Google Places...`,
 			});
 			resolve();
@@ -28,11 +25,11 @@ module.exports = function placeSearch({ req, res, respondLater, subCommandDetail
 
 					respondLater({ text: responseText.join('\n') });
 
-					areaInfo.results.forEach((item, idx) => {
+					return Promise.all(areaInfo.results.map((item, idx) => {
 						const placeId = item.place_id;
 						const placeName = item.name;
 
-						googleAPIClient.getPlaceDetails(placeId)
+						return googleAPIClient.getPlaceDetails(placeId)
 							.then(placeInfo => {
 								debugLogger(`[googleAPIClient.getPlaceDetails|${placeId}|${idx + 1}/${areaInfo.results.length}] ${placeInfo.result.name || ''} (${placeInfo.result.photos && placeInfo.result.photos.length || 0} photos)`);
 
@@ -64,7 +61,7 @@ module.exports = function placeSearch({ req, res, respondLater, subCommandDetail
 								googleAPIClient.imagesAnnotate(imageInfo.data)
 									.then(annotationResult => {
 										if (!!annotationResult.error) {
-											console.error('Image annotation failed:', annotationResult.error);
+											debugErrorLogger('Image annotation failed:', annotationResult.error);
 											annotationInfo = `> _Image annotation failed._ (code: ${annotationResult.error.code}; ${annotationResult.error.message})`;
 											return;
 										}
@@ -98,7 +95,7 @@ module.exports = function placeSearch({ req, res, respondLater, subCommandDetail
 										annotationInfo = annotations.join('\n');
 									})
 									.catch(e => {
-										console.error('Image annotation failed:', e && e.response && e.response.status, e && e.response && e.response.data);
+										debugErrorLogger('Image annotation failed:', e && e.response && e.response.status, e && e.response && e.response.data);
 										annotationInfo = '> _Image annotation failed._';
 									})
 									.then(() => {
@@ -123,14 +120,13 @@ module.exports = function placeSearch({ req, res, respondLater, subCommandDetail
 							.catch(e => {
 								debugLogger(`[Error|${idx + 1}/${areaInfo.results.length}] googleAPIClient.getPlaceDetails or googleAPIClient.getPhotoUrl.`, e && e.message || '');
 							});
-					});
+					}));
 				})
 				.catch(e => {
 					debugLogger(`[Error] googleAPIClient.placeNearbySearch results for "${subCommandDetails}" failed.`, e && e.message || '');
 				});
 		} else {
-			res.json({
-				response_type: 'in_channel',
+			respondNowEphemeral({
 				text: `Invalid input. Provide a lat-lon pair.`,
 			});
 			resolve();
@@ -143,6 +139,7 @@ function parseLatLngPair(s) {
 		const split = s.split(',');
 		const maybeLat = Number(split.shift().trim().split(' ').shift());
 		const maybeLng = Number(split.shift().trim().split(' ').shift());
+		// eslint-disable-next-line yoda
 		if ((-90 < maybeLat) && (maybeLat < 90) && (-180 < maybeLng) && (maybeLng < 180)) {
 			return {
 				lat: maybeLat,
@@ -153,3 +150,5 @@ function parseLatLngPair(s) {
 		return false;
 	}
 }
+
+module.exports.description = '`place-search`: search for places by position (e.g.: `/demand place-search 40.7624, -73.9760`)';
